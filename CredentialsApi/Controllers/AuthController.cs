@@ -1,6 +1,7 @@
 ﻿using CredentialsApi.Data;
 using CredentialsApi.DTOs;
 using CredentialsApi.Models;
+using CredentialsApi.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -14,10 +15,12 @@ namespace CredentialsApi.Controllers
     {
         private readonly AppDbContext _context;
         private readonly PasswordHasher<User> _hasher = new();
+        private readonly TokenService _tokenService;
 
-        public AuthController(AppDbContext context)
+        public AuthController(AppDbContext context, TokenService tokenService)
         {
             _context = context;
+            _tokenService = tokenService;
         }
 
         [HttpPost("register")]
@@ -53,7 +56,9 @@ namespace CredentialsApi.Controllers
             {
                 return Unauthorized("Invalid email or password.");
             }
-            return Ok("Login successful.");
+
+            var token = _tokenService.GenerateToken(user);
+            return Ok(new {token});
         }
     }
 }
