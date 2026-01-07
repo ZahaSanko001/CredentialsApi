@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using CredentialsApi.Models;
+using Microsoft.EntityFrameworkCore;
 namespace CredentialsApi.Data
 {
     public class AppDbContext : DbContext
@@ -7,6 +8,7 @@ namespace CredentialsApi.Data
         {
         }
 
-        public DbSet<CredentialsApi.Models.User> Users { get; set; }
+        public DbSet<User> Users { get; set; }
+        public DbSet<SecureItem> SecureItems { get; set; }
     }
 }
