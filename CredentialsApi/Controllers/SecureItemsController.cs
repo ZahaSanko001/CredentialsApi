@@ -69,5 +69,80 @@ namespace CredentialsApi.Controllers
 
             return Ok(result);
         }
+
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> GetById(int id)
+        {
+            var userId = GetUserId();
+            var item = await _context.SecureItems.FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
+
+            if (item == null) return NotFound();
+            if (item.UserId != userId) return Forbid();
+
+            var result = new ResponseDTO
+            {
+                Id = item.Id,
+                Title = item.Title,
+                CreatedAt = item.CreatedAt,
+                Content = _encryption.Decrypt(item.EncryptedContent)
+            };
+
+            return Ok(result);
+        }
+
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> Update(int id, SecureItemDTO dto)
+        {
+            var userId = GetUserId();
+            var item = await _context.SecureItems.FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
+
+            if (item == null) return NotFound();
+            if (item.UserId != userId) return Forbid();
+
+            item.Title = dto.Title;
+            item.EncryptedContent = _encryption.Encrypt(dto.Content);
+
+            await _context.SaveChangesAsync();
+
+            return Ok("Updated Successfully");
+        }
+
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var userId = GetUserId();
+            var item = await _context.SecureItems.FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
+
+            if (item == null) return NotFound();
+            if (item.UserId != userId) return Forbid();
+
+            _context.SecureItems.Remove(item);
+            await _context.SaveChangesAsync();
+
+            return Ok("Deleted");
+        }
+
+        [HttpGet("search")]
+        public async Task<IActionResult> Search([FromQuery] string? q, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            var userId = GetUserId();
+            var query = _context.SecureItems.Where(x => x.UserId == userId);
+
+            if (!string.IsNullOrWhiteSpace(q)) query = query.Where(x => x.Title.Contains(q));
+
+            var items = await query.OrderByDescending(x => x.CreatedAt)
+                                   .Skip((page - 1) * pageSize)
+                                   .Take(pageSize)
+                                   .ToListAsync();
+            var result = items.Select(x => new ResponseDTO
+            {
+                Id = x.Id,
+                Title = x.Title,
+                CreatedAt = x.CreatedAt,
+                Content = _encryption.Decrypt(x.EncryptedContent)
+            });
+
+            return Ok(result);
+        }
     }
 }

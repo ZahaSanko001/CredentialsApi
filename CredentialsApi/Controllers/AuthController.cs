@@ -2,6 +2,7 @@
 using CredentialsApi.DTOs;
 using CredentialsApi.Models;
 using CredentialsApi.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -59,6 +60,13 @@ namespace CredentialsApi.Controllers
 
             var token = _tokenService.GenerateToken(user);
             return Ok(new {token});
+        }
+
+        [HttpGet("admin-only")]
+        [Authorize(Roles = "Admin")]
+        public IActionResult AdminOnly()
+        {
+            return Ok("Welcome Admin");
         }
     }
 }
