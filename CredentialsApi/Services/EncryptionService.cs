@@ -16,14 +16,13 @@ namespace CredentialsApi.Services
         public EncryptionService(IConfiguration config)
         {
             var keyBase64 = Environment.GetEnvironmentVariable("APP_ENC_KEY");
-            Console.WriteLine("----------------------------------------------------------->>>Encryption Key (Base64): " + keyBase64);
             if (string.IsNullOrEmpty(keyBase64)) throw new Exception("APP_ENC_KEY env var is missing");
             _key = Convert.FromBase64String(keyBase64);
         }
 
         public string Encrypt(string plainText)
         {
-            using var aes = new AesGcm(_key, AesGcm.TagByteSizes.MaxSize);
+            using var aes = new AesGcm(_key);
 
             byte[] nonce = RandomNumberGenerator.GetBytes(12);
             byte[] plaintextBytes = Encoding.UTF8.GetBytes(plainText);
@@ -40,21 +39,21 @@ namespace CredentialsApi.Services
             return Convert.ToBase64String(result);
         }
 
-        public string Decrypt(string cipherText)
+        public string Decrypt(string encoded)
         {
-            byte[] fullCipher = Convert.FromBase64String(cipherText);
+            byte[] fullCipher = Convert.FromBase64String(encoded);
             byte[] nonce = new byte[12];
             byte[] tag = new byte[16];
-            byte[] cipherBytes = new byte[fullCipher.Length - nonce.Length - tag.Length];
+            byte[] cyphertext = new byte[fullCipher.Length - nonce.Length - tag.Length];
 
             Buffer.BlockCopy(fullCipher, 0, nonce, 0, nonce.Length);
             Buffer.BlockCopy(fullCipher, nonce.Length, tag, 0, tag.Length);
-            Buffer.BlockCopy(fullCipher, nonce.Length + tag.Length, cipherBytes, 0, cipherBytes.Length);
+            Buffer.BlockCopy(fullCipher, nonce.Length + tag.Length, cyphertext, 0, cyphertext.Length);
 
-            using var aes = new AesGcm(_key, AesGcm.TagByteSizes.MaxSize);
+            using var aes = new AesGcm(_key);
 
-            byte[] plainTextBytes = new byte[cipherBytes.Length];
-            aes.Decrypt(nonce, cipherBytes, tag, plainTextBytes);
+            byte[] plainTextBytes = new byte[cyphertext.Length];
+            aes.Decrypt(nonce, cyphertext, tag, plainTextBytes);
 
             return Encoding.UTF8.GetString(plainTextBytes);
         }

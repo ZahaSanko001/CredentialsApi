@@ -32,7 +32,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
     };
 });
-builder.Services.AddScoped<EncryptionService, EncryptionService>();
+builder.Services.AddSingleton<EncryptionService>();
 
 var app = builder.Build();
 

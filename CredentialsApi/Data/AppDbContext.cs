@@ -6,12 +6,17 @@ namespace CredentialsApi.Data
 {
     public class AppDbContext : DbContext
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+        private readonly EncryptionService _encryption;
+        public AppDbContext(DbContextOptions<AppDbContext> options, EncryptionService encryption    ) : base(options)
         {
+            _encryption = encryption;
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            var provider = this.GetService<IServiceProvider>();
+            var encryption = provider.GetService<EncryptionService>();
+
             modelBuilder.Entity<SecureItem>()
                 .Property(e => e.EncryptedContent)
                 .HasConversion(
