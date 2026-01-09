@@ -16,12 +16,10 @@ namespace CredentialsApi.Controllers
     public class SecureItemsController : ControllerBase
     {
         private readonly AppDbContext _context;
-        private readonly IEncryptionService _encryption;
 
-        public SecureItemsController(AppDbContext context, IEncryptionService encryption)
+        public SecureItemsController(AppDbContext context)
         {
             _context = context;
-            _encryption = encryption;
         }
 
         private int GetUserId()
@@ -41,7 +39,7 @@ namespace CredentialsApi.Controllers
             {
                 Title = dto.Title,
                 UserId = userId,
-                EncryptedContent = _encryption.Encrypt(dto.Content)
+                EncryptedContent = dto.Content
             };
 
             _context.SecureItems.Add(item);
@@ -64,7 +62,7 @@ namespace CredentialsApi.Controllers
                 Id = x.Id,
                 Title = x.Title,
                 CreatedAt = x.CreatedAt,
-                Content = _encryption.Decrypt(x.EncryptedContent)
+                Content = x.EncryptedContent
             });
 
             return Ok(result);
@@ -84,7 +82,7 @@ namespace CredentialsApi.Controllers
                 Id = item.Id,
                 Title = item.Title,
                 CreatedAt = item.CreatedAt,
-                Content = _encryption.Decrypt(item.EncryptedContent)
+                Content = item.EncryptedContent
             };
 
             return Ok(result);
@@ -100,7 +98,7 @@ namespace CredentialsApi.Controllers
             if (item.UserId != userId) return Forbid();
 
             item.Title = dto.Title;
-            item.EncryptedContent = _encryption.Encrypt(dto.Content);
+            item.EncryptedContent = dto.Content;
 
             await _context.SaveChangesAsync();
 
@@ -139,7 +137,7 @@ namespace CredentialsApi.Controllers
                 Id = x.Id,
                 Title = x.Title,
                 CreatedAt = x.CreatedAt,
-                Content = _encryption.Decrypt(x.EncryptedContent)
+                Content = x.EncryptedContent
             });
 
             return Ok(result);

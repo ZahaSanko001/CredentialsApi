@@ -3,48 +3,60 @@ using System.Text;
 
 namespace CredentialsApi.Services
 {
-    public interface IEncryptionService
-    {
-        string Encrypt(string plainText);
-        string Decrypt(string cipherText);
-    }
+ //   public interface IEncryptionService
+ //   {
+ //       string Encrypt(string plainText);
+ //       string Decrypt(string cipherText);
+ //   }
 
-    public class EncryptionService : IEncryptionService
+    public class EncryptionService
     {
         private readonly byte[] _key;
-        private readonly byte[] _iv;
 
-        public EncryptionService(IConfiguration configuration)
+        public EncryptionService(IConfiguration config)
         {
-            // In a real application, use a secure method to store and retrieve keys
-            _key = Convert.FromBase64String(configuration["Encryption:Key"]);
-            _iv = Convert.FromBase64String(configuration["Encryption:IV"]);
+            var keyBase64 = Environment.GetEnvironmentVariable("APP_ENC_KEY");
+            Console.WriteLine("----------------------------------------------------------->>>Encryption Key (Base64): " + keyBase64);
+            if (string.IsNullOrEmpty(keyBase64)) throw new Exception("APP_ENC_KEY env var is missing");
+            _key = Convert.FromBase64String(keyBase64);
         }
 
         public string Encrypt(string plainText)
         {
-            using var aes = Aes.Create();
-            aes.Key = _key;
-            aes.IV = _iv;
+            using var aes = new AesGcm(_key, AesGcm.TagByteSizes.MaxSize);
 
-            var encryptor = aes.CreateEncryptor();
-            var bytes = Encoding.UTF8.GetBytes(plainText);
+            byte[] nonce = RandomNumberGenerator.GetBytes(12);
+            byte[] plaintextBytes = Encoding.UTF8.GetBytes(plainText);
+            byte[] cipherText = new byte[plaintextBytes.Length];
+            byte[] tag = new byte[16];
 
-            var encrypted = encryptor.TransformFinalBlock(bytes, 0, bytes.Length);
-            return Convert.ToBase64String(encrypted);
+            aes.Encrypt(nonce, plaintextBytes, cipherText, tag);
+
+            byte[] result = new byte[nonce.Length + tag.Length + cipherText.Length];
+            Buffer.BlockCopy(nonce, 0, result, 0, nonce.Length);
+            Buffer.BlockCopy(tag, 0, result, nonce.Length, tag.Length);
+            Buffer.BlockCopy(cipherText, 0, result, nonce.Length + tag.Length, cipherText.Length);
+
+            return Convert.ToBase64String(result);
         }
 
         public string Decrypt(string cipherText)
         {
-            using var aes = Aes.Create();
-            aes.Key = _key;
-            aes.IV = _iv;
+            byte[] fullCipher = Convert.FromBase64String(cipherText);
+            byte[] nonce = new byte[12];
+            byte[] tag = new byte[16];
+            byte[] cipherBytes = new byte[fullCipher.Length - nonce.Length - tag.Length];
 
-            var decryptor = aes.CreateDecryptor();
-            var bytes = Convert.FromBase64String(cipherText);
+            Buffer.BlockCopy(fullCipher, 0, nonce, 0, nonce.Length);
+            Buffer.BlockCopy(fullCipher, nonce.Length, tag, 0, tag.Length);
+            Buffer.BlockCopy(fullCipher, nonce.Length + tag.Length, cipherBytes, 0, cipherBytes.Length);
 
-            var decrypted = decryptor.TransformFinalBlock(bytes, 0, bytes.Length);
-            return Encoding.UTF8.GetString(decrypted);
+            using var aes = new AesGcm(_key, AesGcm.TagByteSizes.MaxSize);
+
+            byte[] plainTextBytes = new byte[cipherBytes.Length];
+            aes.Decrypt(nonce, cipherBytes, tag, plainTextBytes);
+
+            return Encoding.UTF8.GetString(plainTextBytes);
         }
     }
 }
